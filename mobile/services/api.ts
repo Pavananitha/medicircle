@@ -11,13 +11,8 @@ import { Storage } from '../utils/storage';
  * (e.g., http://192.168.1.100:5000/api).
  */
 export const getBaseUrl = (): string => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5001/api';
-  }
-  return 'http://127.0.0.1:5001/api';
+  // Hardcoded for the Expo APK cloud build since .env is blocked by .gitignore
+  return 'http://10.57.165.165:5001/api';
 };
 
 export const API_BASE_URL = getBaseUrl();
