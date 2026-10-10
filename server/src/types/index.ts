@@ -7,6 +7,12 @@ export interface AuthUser {
   email: string;
   name: string;
   role: Role;
+  phone?: string;
+  date_of_birth?: Date | string | null;
+  gender?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  profile_image_url?: string | null;
 }
 
 export interface AuthenticatedRequest extends Request {

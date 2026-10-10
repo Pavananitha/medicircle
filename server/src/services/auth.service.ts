@@ -23,6 +23,12 @@ export class AuthService {
       name: userRecord.name,
       email: userRecord.email,
       role: userRecord.role,
+      phone: userRecord.phone,
+      date_of_birth: userRecord.date_of_birth,
+      gender: userRecord.gender,
+      emergency_contact_name: userRecord.emergency_contact_name,
+      emergency_contact_phone: userRecord.emergency_contact_phone,
+      profile_image_url: userRecord.profile_image_url,
     };
 
     const token = signToken(user);
@@ -54,6 +60,12 @@ export class AuthService {
       name: userRecord.name,
       email: userRecord.email,
       role: userRecord.role,
+      phone: userRecord.phone,
+      date_of_birth: userRecord.date_of_birth,
+      gender: userRecord.gender,
+      emergency_contact_name: userRecord.emergency_contact_name,
+      emergency_contact_phone: userRecord.emergency_contact_phone,
+      profile_image_url: userRecord.profile_image_url,
     };
 
     const token = signToken(user);
@@ -74,6 +86,12 @@ export class AuthService {
       name: userRecord.name,
       email: userRecord.email,
       role: userRecord.role,
+      phone: userRecord.phone,
+      date_of_birth: userRecord.date_of_birth,
+      gender: userRecord.gender,
+      emergency_contact_name: userRecord.emergency_contact_name,
+      emergency_contact_phone: userRecord.emergency_contact_phone,
+      profile_image_url: userRecord.profile_image_url,
     };
   }
 }
