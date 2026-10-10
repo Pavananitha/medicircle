@@ -35,7 +35,8 @@
           "color": "#0284C7",
           "icon": "./assets/notification-icon.png"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "medicircle",
     "extra": {
