@@ -1,0 +1,32 @@
+{
+  "name": "medicircle-root",
+  "version": "1.0.0",
+  "description": "MediCircle – Smart Medicine Reminder and Caregiver Management System",
+  "private": true,
+  "workspaces": [
+    "server",
+    "mobile"
+  ],
+  "scripts": {
+    "server:dev": "npm --prefix server run dev",
+    "server:build": "npm --prefix server run build",
+    "mobile:start": "npm --prefix mobile start",
+    "mobile:ios": "npm --prefix mobile run ios",
+    "mobile:android": "npm --prefix mobile run android"
+  },
+  "keywords": [
+    "medicircle",
+    "medicine-reminder",
+    "caregiver",
+    "react-native",
+    "expo",
+    "express",
+    "postgresql",
+    "prisma"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "query-string": "^7.1.3"
+  }
+}

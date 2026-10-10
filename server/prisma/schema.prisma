@@ -1,0 +1,164 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                    String    @db.VarChar(255)
+  email                   String    @unique @db.VarChar(255)
+  phone                   String?   @db.VarChar(50)
+  password_hash           String    @db.VarChar(255)
+  role                    String    @db.VarChar(20)
+  date_of_birth           DateTime? @db.Date
+  gender                  String?   @db.VarChar(20)
+  emergency_contact_name  String?   @db.VarChar(255)
+  emergency_contact_phone String?   @db.VarChar(50)
+  profile_image_url       String?   @db.Text
+  created_at              DateTime  @default(now()) @db.Timestamptz()
+  updated_at              DateTime  @default(now()) @updatedAt @db.Timestamptz()
+
+  medicines                        Medicine[]
+  medication_logs                  MedicationLog[]
+  caregiver_connections_as_patient  CaregiverConnection[] @relation("PatientConnections")
+  caregiver_connections_as_caregiver CaregiverConnection[] @relation("CaregiverConnections")
+  connection_codes                 ConnectionCode[]
+  notifications                    Notification[]
+  notification_devices             NotificationDevice[]
+
+  @@map("users")
+}
+
+model Medicine {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id    String    @db.Uuid
+  name          String    @db.VarChar(255)
+  generic_name  String?   @db.VarChar(255)
+  dosage        String    @db.VarChar(100)
+  dosage_unit   String    @db.VarChar(50)
+  medicine_type String    @db.VarChar(50)
+  instructions  String?   @db.Text
+  start_date    DateTime  @db.Date
+  end_date      DateTime? @db.Date
+  notes         String?   @db.Text
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now()) @db.Timestamptz()
+  updated_at    DateTime  @default(now()) @updatedAt @db.Timestamptz()
+
+  patient   User               @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  schedules MedicineSchedule[]
+  logs      MedicationLog[]
+
+  @@index([patient_id], name: "idx_medicines_patient_id")
+  @@map("medicines")
+}
+
+model MedicineSchedule {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicine_id    String        @db.Uuid
+  schedule_time  DateTime      @db.Time()
+  frequency_type String    @db.VarChar(50)
+  days_of_week   String?       @db.VarChar(100)
+  is_active      Boolean       @default(true)
+  created_at     DateTime      @default(now()) @db.Timestamptz()
+  updated_at     DateTime      @default(now()) @updatedAt @db.Timestamptz()
+
+  medicine Medicine        @relation(fields: [medicine_id], references: [id], onDelete: Cascade)
+  logs     MedicationLog[]
+
+  @@index([medicine_id], name: "idx_medicine_schedules_medicine_id")
+  @@map("medicine_schedules")
+}
+
+model MedicationLog {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id     String    @db.Uuid
+  medicine_id    String    @db.Uuid
+  schedule_id    String    @db.Uuid
+  scheduled_date DateTime  @db.Date
+  scheduled_time DateTime  @db.Time()
+  action_time    DateTime? @db.Timestamptz()
+  status         String    @default("PENDING") @db.VarChar(20)
+  created_at     DateTime  @default(now()) @db.Timestamptz()
+  updated_at     DateTime  @default(now()) @updatedAt @db.Timestamptz()
+
+  patient  User             @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  medicine Medicine         @relation(fields: [medicine_id], references: [id], onDelete: Cascade)
+  schedule MedicineSchedule @relation(fields: [schedule_id], references: [id], onDelete: Cascade)
+
+  @@unique([patient_id, medicine_id, schedule_id, scheduled_date, scheduled_time], name: "uq_medication_log_occurrence")
+  @@index([patient_id], name: "idx_medication_logs_patient_id")
+  @@index([scheduled_date], name: "idx_medication_logs_scheduled_date")
+  @@index([status], name: "idx_medication_logs_status")
+  @@map("medication_logs")
+}
+
+model CaregiverConnection {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id   String           @db.Uuid
+  caregiver_id String           @db.Uuid
+  status       String           @default("PENDING") @db.VarChar(20)
+  requested_at DateTime         @default(now()) @db.Timestamptz()
+  approved_at  DateTime?        @db.Timestamptz()
+  removed_at   DateTime?        @db.Timestamptz()
+  created_at   DateTime         @default(now()) @db.Timestamptz()
+  updated_at   DateTime         @default(now()) @updatedAt @db.Timestamptz()
+
+  patient   User @relation("PatientConnections", fields: [patient_id], references: [id], onDelete: Cascade)
+  caregiver User @relation("CaregiverConnections", fields: [caregiver_id], references: [id], onDelete: Cascade)
+
+  @@unique([patient_id, caregiver_id], name: "uq_patient_caregiver")
+  @@index([patient_id], name: "idx_caregiver_connections_patient_id")
+  @@index([caregiver_id], name: "idx_caregiver_connections_caregiver_id")
+  @@map("caregiver_connections")
+}
+
+model ConnectionCode {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patient_id String    @db.Uuid
+  code       String    @unique @db.VarChar(20)
+  expires_at DateTime  @db.Timestamptz()
+  used_at    DateTime? @db.Timestamptz()
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now()) @db.Timestamptz()
+
+  patient User @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@index([code], name: "idx_connection_codes_code")
+  @@map("connection_codes")
+}
+
+model Notification {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String           @db.Uuid
+  type              String           @db.VarChar(50)
+  title             String           @db.VarChar(255)
+  message           String           @db.Text
+  related_entity_id String?          @db.Uuid
+  is_read           Boolean          @default(false)
+  created_at        DateTime         @default(now()) @db.Timestamptz()
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id], name: "idx_notifications_user_id")
+  @@index([is_read], name: "idx_notifications_is_read")
+  @@map("notifications")
+}
+
+model NotificationDevice {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  push_token String   @db.Text
+  platform   String   @db.VarChar(20)
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz()
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, push_token], name: "uq_user_device")
+  @@map("notification_devices")
+}
