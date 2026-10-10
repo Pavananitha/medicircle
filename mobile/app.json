@@ -4,12 +4,11 @@
     "slug": "medicircle",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#0F172A",
+      "image": "./assets/splash.png"
     },
     "ios": {
       "supportsTablet": true,
@@ -17,8 +16,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F172A"
+        "backgroundColor": "#0F172A",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "package": "com.medicircle.app",
       "permissions": [
@@ -33,11 +32,20 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#0284C7"
+          "color": "#0284C7",
+          "icon": "./assets/notification-icon.png"
         }
       ]
     ],
-    "scheme": "medicircle"
+    "scheme": "medicircle",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "d39a9125-9eea-4e07-9e9f-a09fb019ec81"
+      }
+    },
+    "icon": "./assets/icon.png"
   }
 }
