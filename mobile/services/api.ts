@@ -11,8 +11,10 @@ import { Storage } from '../utils/storage';
  * (e.g., http://192.168.1.100:5000/api).
  */
 export const getBaseUrl = (): string => {
-  // Hardcoded strictly to SRM Wi-Fi to bypass ANY cloud .env injection failures
-  return 'http://10.3.131.203:5001/api';
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  return 'http://10.3.11.153:5001/api';
 };
 
 export const API_BASE_URL = getBaseUrl();

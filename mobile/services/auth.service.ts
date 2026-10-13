@@ -26,10 +26,15 @@ export const AuthService = {
     await Storage.setUser(user);
     return user;
   },
-  async forgotPassword(email: string): Promise<{ message: string }> {
+  async forgotPassword(email: string): Promise<{ message: string; otp?: string }> {
     const res = await apiClient.post('/auth/forgot-password', { email });
     return res.data;
   },
+  async resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
+    const res = await apiClient.post('/auth/reset-password', { email, code, newPassword });
+    return res.data;
+  },
 };
+
 
 export default AuthService;

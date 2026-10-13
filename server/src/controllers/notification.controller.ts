@@ -24,6 +24,16 @@ export class NotificationController {
     }
   }
 
+  async deleteNotification(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      await notificationService.deleteNotification(id, req.user!.id);
+      return sendSuccess(res, null, 'Notification deleted successfully');
+    } catch (error: any) {
+      return sendError(res, error.message, 400);
+    }
+  }
+
   async registerDevice(req: AuthenticatedRequest, res: Response) {
     try {
       const { pushToken, platform } = req.body;

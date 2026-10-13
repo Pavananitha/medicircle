@@ -106,6 +106,7 @@ export class PrismaUserRepository implements IUserRepository {
         ...(data.emergency_contact_name !== undefined && { emergency_contact_name: data.emergency_contact_name }),
         ...(data.emergency_contact_phone !== undefined && { emergency_contact_phone: data.emergency_contact_phone }),
         ...(data.profile_image_url !== undefined && { profile_image_url: data.profile_image_url }),
+        ...(data.password_hash !== undefined && { password_hash: data.password_hash }),
       },
     });
     return {

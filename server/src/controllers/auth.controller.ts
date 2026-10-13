@@ -50,6 +50,34 @@ export class AuthController {
   async logout(req: AuthenticatedRequest, res: Response) {
     return res.status(200).json({ message: 'Logged out successfully' });
   }
+
+  async forgotPassword(req: Request, res: Response) {
+    try {
+      const { email } = req.body;
+      const result = await authService.forgotPassword(email);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      if (error.message === 'No account found with this email address.') {
+        return res.status(404).json({ message: error.message });
+      }
+      console.error('Forgot password error:', error.message || error);
+      return res.status(500).json({ message: 'Unable to process password reset request.' });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const { email, code, newPassword } = req.body;
+      const result = await authService.resetPassword(email, code, newPassword);
+      return res.status(200).json(result);
+    } catch (error: any) {
+      if (error.message.includes('Invalid or expired verification code') || error.message.includes('No account found')) {
+        return res.status(400).json({ message: error.message });
+      }
+      console.error('Reset password error:', error.message || error);
+      return res.status(500).json({ message: 'Unable to reset password.' });
+    }
+  }
 }
 
 export const authController = new AuthController();

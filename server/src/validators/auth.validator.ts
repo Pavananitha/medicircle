@@ -32,5 +32,26 @@ export const registerSchema = z.object({
   }),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .email('Please enter a valid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .email('Please enter a valid email address'),
+  code: z
+    .string({ required_error: 'Verification code is required' })
+    .length(6, 'Verification code must be 6 digits'),
+  newPassword: z
+    .string({ required_error: 'New password is required' })
+    .min(6, 'Password must contain at least 6 characters'),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+

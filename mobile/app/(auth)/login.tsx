@@ -157,7 +157,7 @@ export default function LoginScreen() {
             {/* Forgot Password Link */}
             <TouchableOpacity
               style={styles.forgotPasswordButton}
-              onPress={() => handlePlaceholderAction('Forgot Password')}
+              onPress={() => router.push('/(auth)/forgot-password')}
               disabled={isSubmitting}
               accessibilityRole="button"
             >
