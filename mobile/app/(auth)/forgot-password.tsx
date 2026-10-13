@@ -48,8 +48,10 @@ export default function ForgotPasswordScreen() {
       const res = await AuthService.forgotPassword(email.trim());
       if (res.otp) {
         setDevOtp(res.otp);
-        setCode(res.otp); // Pre-fill for seamless user testing
+      } else {
+        setDevOtp(null);
       }
+      setCode('');
       setStep(2);
     } catch (err: any) {
       setError(err.message || 'Failed to send verification code. Please check your email.');
@@ -170,13 +172,34 @@ export default function ForgotPasswordScreen() {
             {/* Step 2: OTP + New Password Form */}
             {step === 2 && (
               <View style={styles.form}>
-                {/* Dev OTP helper banner */}
-                {devOtp && (
+                {/* Dev OTP helper banner or Email Sent Notice */}
+                {devOtp ? (
                   <View style={styles.otpBanner}>
                     <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.otpBannerTitle}>Verification Code:</Text>
+                      <Text style={styles.otpBannerTitle}>Demo Mode - Verification Code:</Text>
                       <Text style={styles.otpBannerCode}>{devOtp}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setCode(devOtp)}
+                      style={{
+                        backgroundColor: Colors.primary,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Auto-Fill</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={[styles.otpBanner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                    <Ionicons name="mail-open-outline" size={22} color="#16A34A" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.otpBannerTitle, { color: '#15803D' }]}>Code Sent to Email</Text>
+                      <Text style={{ fontSize: 13, color: '#166534', marginTop: 2 }}>
+                        Please check your inbox (and spam folder) for {email}.
+                      </Text>
                     </View>
                   </View>
                 )}

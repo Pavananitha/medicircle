@@ -8,4 +8,6 @@ export const config = {
   host: process.env.HOST || '0.0.0.0',
   missedDoseGracePeriodMinutes: parseInt(process.env.MISSED_DOSE_GRACE_PERIOD_MINUTES || '30', 10),
   databaseUrl: process.env.DATABASE_URL || '',
+  emailUser: process.env.EMAIL_USER || '',
+  emailPass: process.env.EMAIL_PASS || '',
 };

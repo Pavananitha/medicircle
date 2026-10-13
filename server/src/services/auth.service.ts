@@ -3,6 +3,7 @@ import { comparePassword, hashPassword } from '../utils/hash';
 import { signToken } from '../utils/jwt';
 import { AuthUser, LoginResponse } from '../types';
 import { prisma } from '../config/prisma';
+import { emailService } from './email.service';
 
 export class AuthService {
   constructor(private userRepo: IUserRepository = userRepository) {}
@@ -96,7 +97,7 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(email: string): Promise<{ message: string; otp: string }> {
+  async forgotPassword(email: string): Promise<{ message: string; otp?: string }> {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await this.userRepo.findByEmail(normalizedEmail);
     if (!user) {
@@ -131,9 +132,14 @@ export class AuthService {
     console.log(`[AUTH] 🔑 Password reset verification code for ${normalizedEmail}: ${code}`);
     console.log(`======================================================\n`);
 
+    // Send real email via Nodemailer
+    const emailSent = await emailService.sendPasswordResetOtp(normalizedEmail, code, user.name);
+
     return {
-      message: 'Verification code generated! Please enter the 6-digit code to reset your password.',
-      otp: code,
+      message: emailSent
+        ? 'A 6-digit verification code has been sent to your email inbox.'
+        : 'Verification code generated! Please enter the 6-digit code to reset your password.',
+      otp: emailSent ? undefined : code,
     };
   }
 
