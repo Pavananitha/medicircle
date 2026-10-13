@@ -12,6 +12,9 @@ export class EmailService {
     if (config.emailUser && config.emailPass) {
       this.transporter = nodemailer.createTransport({
         service: 'gmail',
+        connectionTimeout: 4000,
+        greetingTimeout: 4000,
+        socketTimeout: 4000,
         auth: {
           user: config.emailUser,
           pass: config.emailPass,
