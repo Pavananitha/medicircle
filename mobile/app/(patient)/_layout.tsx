@@ -1,17 +1,37 @@
 import React, { useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { NotificationService } from '../../utils/notifications';
+import { useAuth } from '../../store/authContext';
+import { MedicineService } from '../../services/medicine.service';
 
 export default function PatientTabsLayout() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
   useEffect(() => {
-    NotificationService.registerForPushNotifications().then((token) => {
-      if (token) {
-        console.log('Push Token Generated:', token);
-      }
-    });
-  }, []);
+    if (!isLoading && !user) {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    if (user) {
+      // Register for push notifications
+      NotificationService.registerForPushNotifications().then((token) => {
+        if (token) {
+          console.log('Push Token Generated:', token);
+        }
+      });
+
+      // Synchronize and cancel any expired or deleted medicine alarms
+      MedicineService.getMedicines()
+        .then((medicines) => {
+          NotificationService.syncMedicineNotifications(medicines);
+        })
+        .catch((e) => console.warn('Failed to sync medicine notifications:', e));
+    }
+  }, [user, isLoading]);
 
   return (
     <Tabs

@@ -1,9 +1,18 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
+import React, { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Colors } from '../../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../store/authContext';
 
 export default function CaregiverTabsLayout() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace('/(auth)/login');
+    }
+  }, [user, isLoading]);
   return (
     <Tabs
       screenOptions={{

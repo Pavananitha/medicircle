@@ -121,7 +121,8 @@ const formatTime = (timeString: string | null | undefined): string => {
             created.dosage,
             created.dosage_unit,
             s.schedule_time,
-            s.id
+            s.id,
+            created.end_date || endDate
           );
         }
       }

@@ -19,6 +19,9 @@ export const startMissedDoseCron = () => {
       const pendingLogs = await prisma.medicationLog.findMany({
         where: {
           status: 'PENDING',
+          medicine: {
+            is_active: true,
+          },
         },
         include: {
           medicine: true,
@@ -39,6 +42,14 @@ export const startMissedDoseCron = () => {
         // Construct the expected wall-clock target from the DB fields
         const dateStr = log.scheduled_date.toISOString().split('T')[0];
         const timeStr = log.scheduled_time.toISOString().split('T')[1];
+
+        // Skip if log scheduled date is after medicine end date
+        const endDateLocal = log.medicine.end_date ? log.medicine.end_date.toISOString().split('T')[0] : null;
+        if (endDateLocal && dateStr > endDateLocal) {
+          await prisma.medicationLog.delete({ where: { id: log.id } });
+          continue;
+        }
+
         const targetTime = new Date(`${dateStr}T${timeStr}`);
         
         // Add grace period

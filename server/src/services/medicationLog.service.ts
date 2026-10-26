@@ -1,41 +1,92 @@
 import { medicationLogRepository } from '../repositories/medicationLog.repository';
 import { medicineRepository } from '../repositories/medicine.repository';
+import { prisma } from '../config/prisma';
 import { LogStatus } from '../types';
 
 export class MedicationLogService {
-  async ensureTodayLogs(patientId: string) {
+  async ensureLogsForDateRange(patientId: string, days = 30) {
     const now = new Date();
-    // 1. Get exact local date string (e.g. '2026-10-08')
-    const todayLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    
-    // 2. Create a Date object forced to UTC midnight of that local date.
-    // This prevents Prisma from shifting 00:00 IST to 18:30 UTC the day prior.
-    const todayPrisma = new Date(todayLocal + 'T00:00:00.000Z');
+    const localWallClock = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    const todayLocal = localWallClock.toISOString().split('T')[0];
 
     const medicines = await medicineRepository.findByPatientId(patientId);
+
     for (const med of medicines) {
-      if (!med.is_active) continue;
-      
       const startDateLocal = med.start_date.toISOString().split('T')[0];
       const endDateLocal = med.end_date ? med.end_date.toISOString().split('T')[0] : null;
 
-      // Check date bounds using strings
-      if (startDateLocal > todayLocal) continue;
-      if (endDateLocal && endDateLocal < todayLocal) continue;
-
-      for (const sched of med.schedules) {
-        if (!sched.is_active) continue;
-
-        await medicationLogRepository.upsertLog({
+      // Clean up invalid logs recorded before start_date
+      await prisma.medicationLog.deleteMany({
+        where: {
           patient_id: patientId,
           medicine_id: med.id,
-          schedule_id: sched.id,
-          scheduled_date: todayPrisma,
-          scheduled_time: sched.schedule_time,
-          status: 'PENDING',
+          scheduled_date: {
+            lt: new Date(startDateLocal + 'T00:00:00.000Z'),
+          },
+        },
+      });
+
+      // Clean up invalid logs recorded after end_date
+      if (endDateLocal) {
+        await prisma.medicationLog.deleteMany({
+          where: {
+            patient_id: patientId,
+            medicine_id: med.id,
+            scheduled_date: {
+              gt: new Date(endDateLocal + 'T23:59:59.999Z'),
+            },
+          },
         });
       }
+
+      if (!med.is_active) continue;
+
+      // Populate logs for each day from (today - days) to today
+      for (let i = days; i >= 0; i--) {
+        const d = new Date(localWallClock);
+        d.setDate(d.getDate() - i);
+        const dayStr = d.toISOString().split('T')[0];
+        const dayPrisma = new Date(dayStr + 'T00:00:00.000Z');
+
+        // Check if date is within medicine bounds
+        if (dayStr < startDateLocal) continue;
+        if (endDateLocal && dayStr > endDateLocal) continue;
+
+        // Check day of week matching
+        const dayOfWeekNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dayName = dayOfWeekNames[d.getDay()];
+
+        for (const sched of med.schedules) {
+          if (!sched.is_active) continue;
+
+          if (sched.frequency_type === 'SPECIFIC_DAYS' && sched.days_of_week) {
+            const allowedDays = sched.days_of_week.split(',').map((s: string) => s.trim().toUpperCase());
+            if (!allowedDays.includes(dayName)) continue;
+          }
+
+          // Construct target time to determine if already in the past
+          const timeStr = sched.schedule_time.toISOString().split('T')[1];
+          const targetTime = new Date(`${dayStr}T${timeStr}`);
+          const expiryTime = new Date(targetTime.getTime() + 60 * 60000); // 1-hour grace period
+
+          // If in the past beyond grace period -> MISSED, otherwise PENDING
+          const initialStatus: LogStatus = localWallClock > expiryTime ? 'MISSED' : 'PENDING';
+
+          await medicationLogRepository.upsertLog({
+            patient_id: patientId,
+            medicine_id: med.id,
+            schedule_id: sched.id,
+            scheduled_date: dayPrisma,
+            scheduled_time: sched.schedule_time,
+            status: initialStatus,
+          });
+        }
+      }
     }
+  }
+
+  async ensureTodayLogs(patientId: string) {
+    return this.ensureLogsForDateRange(patientId, 1);
   }
 
   async getTodayLogs(patientId: string) {
@@ -43,11 +94,12 @@ export class MedicationLogService {
     const now = new Date();
     const todayLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     const todayPrisma = new Date(todayLocal + 'T00:00:00.000Z');
-    
+
     return medicationLogRepository.findTodayLogs(patientId, todayPrisma);
   }
 
   async getHistoryLogs(patientId: string, days = 30) {
+    await this.ensureLogsForDateRange(patientId, days);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     const startDate = new Date();

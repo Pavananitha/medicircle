@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -30,6 +30,17 @@ export default function CaregiverProfileScreen() {
   const [dateOfBirth, setDateOfBirth] = useState((user?.date_of_birth && typeof user.date_of_birth === 'string') ? user.date_of_birth.substring(0, 10) : '');
   const [gender, setGender] = useState(user?.gender || '');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setPhone(user.phone || '');
+      setEmergencyName(user.emergency_contact_name || '');
+      setEmergencyPhone(user.emergency_contact_phone || '');
+      setDateOfBirth((user.date_of_birth && typeof user.date_of_birth === 'string') ? user.date_of_birth.substring(0, 10) : '');
+      setGender(user.gender || '');
+    }
+  }, [user]);
 
   const handleSave = async () => {
     setSaving(true);

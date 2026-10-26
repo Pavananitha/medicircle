@@ -53,6 +53,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (apiErr) {
              console.warn('Failed to fetch fresh user data from backend:', apiErr);
           }
+        } else if (storedToken && !storedUser) {
+          setToken(storedToken);
+          try {
+             const { apiClient } = require('../services/api');
+             const res = await apiClient.get('/auth/me');
+             const userData = res.data?.user || res.data?.data;
+             if (userData) {
+                setUser(userData);
+                await Storage.setUser(userData);
+             }
+          } catch (apiErr) {
+             console.warn('Failed to restore user from token:', apiErr);
+          }
         }
       } catch (err) {
         console.warn('Failed to restore session from SecureStore:', err);

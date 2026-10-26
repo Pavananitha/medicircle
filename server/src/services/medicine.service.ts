@@ -70,14 +70,20 @@ export class MedicineService {
       });
       createdSchedules.push(schedule);
 
-      // Create initial today log
-      await medicationLogRepository.upsertLog({
-        patient_id: patientId,
-        medicine_id: medicine.id,
-        schedule_id: schedule.id,
-        scheduled_date: today,
-        scheduled_time: timeDate,
-      });
+      // Create initial today log only if today is within start_date and end_date
+      const startDateLocal = new Date(medicine.start_date).toISOString().split('T')[0];
+      const endDateLocal = medicine.end_date ? new Date(medicine.end_date).toISOString().split('T')[0] : null;
+      const todayLocal = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+      if (startDateLocal <= todayLocal && (!endDateLocal || endDateLocal >= todayLocal)) {
+        await medicationLogRepository.upsertLog({
+          patient_id: patientId,
+          medicine_id: medicine.id,
+          schedule_id: schedule.id,
+          scheduled_date: today,
+          scheduled_time: timeDate,
+        });
+      }
     }
 
     return {

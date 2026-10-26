@@ -132,7 +132,8 @@ const formatTime = (timeString: string | null | undefined): string => {
             dosage.trim(),
             dosageUnit,
             time,
-            sched.id
+            sched.id,
+            endDate
           );
         }
       }
@@ -146,7 +147,8 @@ const formatTime = (timeString: string | null | undefined): string => {
             dosage.trim(),
             dosageUnit,
             s.schedule_time,
-            s.id
+            s.id,
+            endDate
           );
         }
       }
