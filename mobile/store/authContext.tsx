@@ -105,6 +105,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       await authService.logout();
+      // Cancel patient local notifications on this device
+      const { NotificationService } = require('../utils/notifications');
+      await NotificationService.cancelAllMedicineReminders();
+    } catch (e) {
+      console.warn('Error during logout:', e);
     } finally {
       setUser(null);
       setToken(null);

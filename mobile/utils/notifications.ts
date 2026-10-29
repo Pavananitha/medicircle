@@ -138,12 +138,13 @@ export const NotificationService = {
     try {
       const scheduled = await Notifications.getAllScheduledNotificationsAsync();
       const now = new Date();
+      const scheduledIds = new Set(scheduled.map((s) => s.identifier));
 
+      // 1. Cancel expired, inactive, or removed medicine reminders
       for (const notif of scheduled) {
         if (!notif.identifier.startsWith('sched_')) continue;
         const schedId = notif.identifier.replace('sched_', '');
 
-        // Check if this schedule belongs to an active, unexpired medicine
         let shouldKeep = false;
         if (Array.isArray(medicines)) {
           for (const med of medicines) {
@@ -163,6 +164,37 @@ export const NotificationService = {
         if (!shouldKeep) {
           console.log(`[NOTIFS] Cancelling expired or inactive reminder: ${notif.identifier}`);
           await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+          scheduledIds.delete(notif.identifier);
+        }
+      }
+
+      // 2. Auto-schedule reminders for active medicines if missing
+      if (Array.isArray(medicines)) {
+        for (const med of medicines) {
+          if (!med.is_active) continue;
+          if (med.end_date) {
+            const endDateStr = typeof med.end_date === 'string' ? med.end_date.split('T')[0] : med.end_date.toISOString().split('T')[0];
+            const endDateTime = new Date(endDateStr + 'T23:59:59');
+            if (now > endDateTime) continue; // Expired!
+          }
+
+          if (Array.isArray(med.schedules)) {
+            for (const sched of med.schedules) {
+              if (!sched.is_active) continue;
+              const identifier = `sched_${sched.id}`;
+              if (!scheduledIds.has(identifier)) {
+                await this.scheduleMedicineReminder(
+                  med.name,
+                  med.dosage,
+                  med.dosage_unit,
+                  sched.schedule_time,
+                  sched.id,
+                  med.end_date
+                );
+                scheduledIds.add(identifier);
+              }
+            }
+          }
         }
       }
     } catch (e) {

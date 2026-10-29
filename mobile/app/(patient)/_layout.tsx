@@ -17,10 +17,17 @@ export default function PatientTabsLayout() {
     }
 
     if (user) {
-      // Register for push notifications
-      NotificationService.registerForPushNotifications().then((token) => {
+      // Register for push notifications with server
+      NotificationService.registerForPushNotifications().then(async (token) => {
         if (token) {
-          console.log('Push Token Generated:', token);
+          try {
+            const { NotificationApiService } = require('../../services/adherence.service');
+            const { Platform } = require('react-native');
+            const platform = Platform.OS === 'ios' ? 'IOS' : Platform.OS === 'android' ? 'ANDROID' : 'WEB';
+            await NotificationApiService.registerDevice(token, platform);
+          } catch (err) {
+            console.warn('Failed to register push device with server:', err);
+          }
         }
       });
 
