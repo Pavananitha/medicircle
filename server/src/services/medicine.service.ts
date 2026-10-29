@@ -2,6 +2,7 @@ import { medicineRepository } from '../repositories/medicine.repository';
 import { scheduleRepository } from '../repositories/schedule.repository';
 import { medicationLogRepository } from '../repositories/medicationLog.repository';
 import { FrequencyType } from '../types';
+import { getWallClockTime } from '../utils/date';
 
 export class MedicineService {
   async getMedicinesByPatient(patientId: string) {
@@ -73,7 +74,7 @@ export class MedicineService {
       // Create initial today log only if today is within start_date and end_date
       const startDateLocal = new Date(medicine.start_date).toISOString().split('T')[0];
       const endDateLocal = medicine.end_date ? new Date(medicine.end_date).toISOString().split('T')[0] : null;
-      const todayLocal = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+      const todayLocal = getWallClockTime().toISOString().split('T')[0];
 
       if (startDateLocal <= todayLocal && (!endDateLocal || endDateLocal >= todayLocal)) {
         await medicationLogRepository.upsertLog({

@@ -1,3 +1,5 @@
+process.env.TZ = process.env.TZ || 'Asia/Kolkata';
+
 import app from './app';
 import { config } from './config';
 import { startMissedDoseCron } from './cron/missedDose.cron';

@@ -4,6 +4,7 @@ import { medicationLogRepository } from '../repositories/medicationLog.repositor
 import { medicationLogService } from './medicationLog.service';
 import { notificationRepository } from '../repositories/notification.repository';
 import { ConnectionStatus, NotificationType, Role } from '../types';
+import { getWallClockTime } from '../utils/date';
 import crypto from 'crypto';
 
 export class CaregiverService {
@@ -143,11 +144,10 @@ export class CaregiverService {
 
   async getPatientHistory(patientId: string, caregiverId: string, days = 30) {
     await this.verifyCaregiverAccess(patientId, caregiverId);
-    await medicationLogService.ensureTodayLogs(patientId);
+    await medicationLogService.ensureLogsForDateRange(patientId, days);
     
     // Fix timezone range for today
-    const now = new Date();
-    const todayLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const todayLocal = getWallClockTime().toISOString().split('T')[0];
     const startDate = new Date(todayLocal + 'T00:00:00.000Z');
     startDate.setDate(startDate.getDate() - days);
     

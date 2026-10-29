@@ -10,6 +10,35 @@ interface NotificationCardProps {
   onDelete?: () => void;
 }
 
+const formatNotificationTime = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date();
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    const timeString = d.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    if (isToday) {
+      return `Today at ${timeString}`;
+    } else if (isYesterday) {
+      return `Yesterday at ${timeString}`;
+    } else {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[d.getMonth()]} ${d.getDate()}, ${timeString}`;
+    }
+  } catch {
+    return dateStr;
+  }
+};
+
 export const NotificationCard: React.FC<NotificationCardProps> = ({
   notification,
   onMarkAsRead,
@@ -46,10 +75,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
         <Text style={styles.message}>{notification.message}</Text>
         <View style={styles.footer}>
           <Text style={styles.time}>
-            {new Date(notification.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
+            {formatNotificationTime(notification.created_at)}
           </Text>
           {!notification.is_read && onMarkAsRead && (
             <TouchableOpacity onPress={onMarkAsRead} style={styles.readBtn}>

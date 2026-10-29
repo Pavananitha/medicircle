@@ -39,3 +39,7 @@ coverage/
 # Database artifacts
 *.sqlite
 *.sqlite3
+
+# Documentation files (local only)
+*.docx
+PROJECT_DOCUMENTATION.md

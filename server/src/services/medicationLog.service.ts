@@ -1,12 +1,14 @@
 import { medicationLogRepository } from '../repositories/medicationLog.repository';
 import { medicineRepository } from '../repositories/medicine.repository';
 import { prisma } from '../config/prisma';
+import { config } from '../config';
 import { LogStatus } from '../types';
+import { getWallClockTime } from '../utils/date';
+import { checkAndProcessMissedDoses } from '../cron/missedDose.cron';
 
 export class MedicationLogService {
   async ensureLogsForDateRange(patientId: string, days = 30) {
-    const now = new Date();
-    const localWallClock = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    const localWallClock = getWallClockTime();
     const todayLocal = localWallClock.toISOString().split('T')[0];
 
     const medicines = await medicineRepository.findByPatientId(patientId);
@@ -67,7 +69,8 @@ export class MedicationLogService {
           // Construct target time to determine if already in the past
           const timeStr = sched.schedule_time.toISOString().split('T')[1];
           const targetTime = new Date(`${dayStr}T${timeStr}`);
-          const expiryTime = new Date(targetTime.getTime() + 60 * 60000); // 1-hour grace period
+          const graceMs = (config.missedDoseGracePeriodMinutes || 30) * 60000;
+          const expiryTime = new Date(targetTime.getTime() + graceMs);
 
           // If in the past beyond grace period -> MISSED, otherwise PENDING
           const initialStatus: LogStatus = localWallClock > expiryTime ? 'MISSED' : 'PENDING';
@@ -83,6 +86,9 @@ export class MedicationLogService {
         }
       }
     }
+
+    // Process any pending doses that have expired or missed doses needing alerts
+    await checkAndProcessMissedDoses();
   }
 
   async ensureTodayLogs(patientId: string) {
@@ -91,8 +97,7 @@ export class MedicationLogService {
 
   async getTodayLogs(patientId: string) {
     await this.ensureTodayLogs(patientId);
-    const now = new Date();
-    const todayLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    const todayLocal = getWallClockTime().toISOString().split('T')[0];
     const todayPrisma = new Date(todayLocal + 'T00:00:00.000Z');
 
     return medicationLogRepository.findTodayLogs(patientId, todayPrisma);

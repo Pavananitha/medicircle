@@ -1,12 +1,16 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types';
 import { notificationService } from '../services/notification.service';
+import { checkAndProcessMissedDoses } from '../cron/missedDose.cron';
 import { sendSuccess, sendError } from '../utils/response';
 import { PlatformType as Platform } from '../types';
 
 export class NotificationController {
   async getNotifications(req: AuthenticatedRequest, res: Response) {
     try {
+      // Ensure any newly expired or backfilled missed doses are processed
+      await checkAndProcessMissedDoses();
+
       const notifications = await notificationService.getUserNotifications(req.user!.id);
       return sendSuccess(res, notifications);
     } catch (error: any) {
