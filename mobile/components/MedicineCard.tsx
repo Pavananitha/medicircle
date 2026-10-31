@@ -51,6 +51,13 @@ const formatTime = (timeString: string | null | undefined): string => {
     return !!endDateStr && todayStr > endDateStr;
   }, [medicine.end_date]);
 
+  const isUpcoming = React.useMemo(() => {
+    if (!medicine.start_date) return false;
+    const startStr = typeof medicine.start_date === 'string' ? medicine.start_date.split('T')[0] : '';
+    const todayStr = new Date().toISOString().split('T')[0];
+    return !!startStr && startStr > todayStr;
+  }, [medicine.start_date]);
+
   const dateRangeStr = React.useMemo(() => {
     if (!medicine.start_date) return null;
     const startStr = typeof medicine.start_date === 'string' ? medicine.start_date.split('T')[0] : '';
@@ -90,6 +97,12 @@ const formatTime = (timeString: string | null | undefined): string => {
           <View style={styles.courseDoneBadge}>
             <Ionicons name="checkmark-circle" size={14} color="#15803D" />
             <Text style={styles.courseDoneText}>Course Completed</Text>
+          </View>
+        ) : null}
+        {isUpcoming ? (
+          <View style={styles.upcomingBadge}>
+            <Ionicons name="time-outline" size={14} color="#0284C7" />
+            <Text style={styles.upcomingText}>Starts Tomorrow</Text>
           </View>
         ) : null}
         {dateRangeStr ? (
@@ -302,6 +315,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#15803D',
+  },
+  upcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  upcomingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
   },
   dateRangeText: {
     ...Typography.caption,

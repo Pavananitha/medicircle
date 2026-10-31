@@ -2,7 +2,7 @@ import { medicineRepository } from '../repositories/medicine.repository';
 import { scheduleRepository } from '../repositories/schedule.repository';
 import { medicationLogRepository } from '../repositories/medicationLog.repository';
 import { FrequencyType } from '../types';
-import { getWallClockTime } from '../utils/date';
+import { getWallClockTime, parseSafeDate } from '../utils/date';
 
 export class MedicineService {
   async getMedicinesByPatient(patientId: string) {
@@ -37,6 +37,9 @@ export class MedicineService {
     }
   ) {
     // 1. Create Medicine record
+    const parsedStartDate = parseSafeDate(data.startDate) || new Date();
+    const parsedEndDate = data.endDate ? parseSafeDate(data.endDate) : null;
+
     const medicine = await medicineRepository.create({
       patient_id: patientId,
       name: data.name,
@@ -45,15 +48,15 @@ export class MedicineService {
       dosage_unit: data.dosageUnit,
       medicine_type: data.medicineType,
       instructions: data.instructions,
-      start_date: new Date(data.startDate),
-      end_date: data.endDate ? new Date(data.endDate) : null,
+      start_date: parsedStartDate,
+      end_date: parsedEndDate,
       notes: data.notes,
     });
 
     // 2. Create Schedules
     const createdSchedules = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayLocal = getWallClockTime().toISOString().split('T')[0];
+    const todayPrisma = new Date(todayLocal + 'T00:00:00.000Z');
 
     for (const sched of data.schedules) {
       // Normalize time to a valid Date object for Prisma Time mapping
@@ -72,16 +75,15 @@ export class MedicineService {
       createdSchedules.push(schedule);
 
       // Create initial today log only if today is within start_date and end_date
-      const startDateLocal = new Date(medicine.start_date).toISOString().split('T')[0];
-      const endDateLocal = medicine.end_date ? new Date(medicine.end_date).toISOString().split('T')[0] : null;
-      const todayLocal = getWallClockTime().toISOString().split('T')[0];
+      const startDateLocal = medicine.start_date.toISOString().split('T')[0];
+      const endDateLocal = medicine.end_date ? medicine.end_date.toISOString().split('T')[0] : null;
 
       if (startDateLocal <= todayLocal && (!endDateLocal || endDateLocal >= todayLocal)) {
         await medicationLogRepository.upsertLog({
           patient_id: patientId,
           medicine_id: medicine.id,
           schedule_id: schedule.id,
-          scheduled_date: today,
+          scheduled_date: todayPrisma,
           scheduled_time: timeDate,
         });
       }
@@ -121,8 +123,8 @@ export class MedicineService {
       ...(data.dosageUnit && { dosage_unit: data.dosageUnit }),
       ...(data.medicineType && { medicine_type: data.medicineType }),
       ...(data.instructions !== undefined && { instructions: data.instructions }),
-      ...(data.startDate && { start_date: new Date(data.startDate) }),
-      ...(data.endDate !== undefined && { end_date: data.endDate ? new Date(data.endDate) : null }),
+      ...(data.startDate && { start_date: parseSafeDate(data.startDate) || new Date(data.startDate) }),
+      ...(data.endDate !== undefined && { end_date: data.endDate ? parseSafeDate(data.endDate) : null }),
       ...(data.notes !== undefined && { notes: data.notes }),
       ...(data.isActive !== undefined && { is_active: data.isActive }),
     });

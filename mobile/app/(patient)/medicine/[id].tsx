@@ -17,6 +17,7 @@ import { Colors, Spacing, Typography, BorderRadius } from '../../../constants/th
 import { AppHeader } from '../../../components/AppHeader';
 import { LoadingState } from '../../../components/LoadingState';
 import { ConfirmationModal } from '../../../components/ConfirmationModal';
+import { formatDisplayDate } from '../../../components/DatePicker';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function MedicineDetailsScreen() {
@@ -139,14 +140,14 @@ const formatTime = (timeString: string | null | undefined): string => {
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Start Date</Text>
               <Text style={styles.infoValue}>
-                {new Date(medicine.start_date).toLocaleDateString()}
+                {formatDisplayDate(medicine.start_date)}
               </Text>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>End Date</Text>
               <Text style={styles.infoValue}>
                 {medicine.end_date
-                  ? new Date(medicine.end_date).toLocaleDateString()
+                  ? formatDisplayDate(medicine.end_date)
                   : 'Ongoing'}
               </Text>
             </View>
