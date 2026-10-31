@@ -50,7 +50,6 @@ export const NotificationService = {
         return null;
       }
 
-
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('medicine-reminders', {
           name: 'Medicine Reminders',
@@ -82,18 +81,6 @@ export const NotificationService = {
     }
 
     try {
-      // If medicine end date is already in the past, do not schedule
-      if (endDate) {
-        const endDateStr = typeof endDate === 'string' ? endDate.split('T')[0] : '';
-        if (endDateStr) {
-          const endDateTime = new Date(endDateStr + 'T23:59:59');
-          if (new Date() > endDateTime) {
-            console.log(`[NOTIFS] Skipping reminder for expired medicine: ${medicineName}`);
-            return null;
-          }
-        }
-      }
-
       let hours = 0;
       let minutes = 0;
       
@@ -109,24 +96,76 @@ export const NotificationService = {
         throw new Error('Invalid time format');
       }
 
-      // Schedule daily notification
-      const identifier = await Notifications.scheduleNotificationAsync({
-        identifier: `sched_${scheduleId}`,
-        content: {
-          title: '💊 Medicine Reminder',
-          body: `Time to take ${medicineName} ${dosage} ${dosageUnit}.`,
-          sound: true,
-          data: { scheduleId, medicineName, endDate },
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: hours,
-          minute: minutes,
-          channelId: 'medicine-reminders',
-        },
-      });
+      // First, cancel any old or existing notifications for this schedule
+      await this.cancelReminder(scheduleId);
 
-      return identifier;
+      const now = new Date();
+      const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+
+      // CASE 1: Medicine has an endDate (e.g. course from Oct 27 to Oct 30)
+      if (endDate) {
+        const endDateStr = typeof endDate === 'string' ? endDate.split('T')[0] : (endDate as any).toISOString().split('T')[0];
+
+        // If end date is already in the past, DO NOT schedule anything!
+        if (todayStr > endDateStr) {
+          console.log(`[NOTIFS] Medicine course ended on ${endDateStr}. Skipping reminders for ${medicineName}.`);
+          return null;
+        }
+
+        // Schedule individual DATE triggers for each valid remaining day up to endDate (max 30 days ahead)
+        // This guarantees Android OS will NEVER ring after endDate even if app is closed or killed!
+        const startDay = new Date(todayStr + 'T00:00:00');
+        const endDay = new Date(endDateStr + 'T23:59:59');
+        let currentDay = new Date(startDay);
+
+        let scheduledCount = 0;
+        while (currentDay <= endDay && scheduledCount < 30) {
+          const dayStr = currentDay.toISOString().split('T')[0];
+          const target = new Date(`${dayStr}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+
+          if (target.getTime() > Date.now()) {
+            await Notifications.scheduleNotificationAsync({
+              identifier: `sched_${scheduleId}_${dayStr}`,
+              content: {
+                title: '💊 Medicine Reminder',
+                body: `Time to take ${medicineName} ${dosage} ${dosageUnit}.`,
+                sound: true,
+                data: { scheduleId, medicineName, endDate },
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: target,
+                channelId: 'medicine-reminders',
+              },
+            });
+            scheduledCount++;
+          }
+
+          currentDay.setDate(currentDay.getDate() + 1);
+        }
+
+        console.log(`[NOTIFS] Scheduled ${scheduledCount} single-date reminders for ${medicineName} up to ${endDateStr}.`);
+        return `sched_${scheduleId}`;
+      } else {
+        // CASE 2: No endDate (ongoing / chronic daily medicine) -> use DAILY trigger
+        const identifier = await Notifications.scheduleNotificationAsync({
+          identifier: `sched_${scheduleId}`,
+          content: {
+            title: '💊 Medicine Reminder',
+            body: `Time to take ${medicineName} ${dosage} ${dosageUnit}.`,
+            sound: true,
+            data: { scheduleId, medicineName },
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DAILY,
+            hour: hours,
+            minute: minutes,
+            channelId: 'medicine-reminders',
+          },
+        });
+
+        return identifier;
+      }
     } catch (error) {
       console.warn('Could not schedule local notification:', error);
       return null;
@@ -138,61 +177,74 @@ export const NotificationService = {
     try {
       const scheduled = await Notifications.getAllScheduledNotificationsAsync();
       const now = new Date();
-      const scheduledIds = new Set(scheduled.map((s) => s.identifier));
+      const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().split('T')[0];
 
       // 1. Cancel expired, inactive, or removed medicine reminders
       for (const notif of scheduled) {
         if (!notif.identifier.startsWith('sched_')) continue;
-        const schedId = notif.identifier.replace('sched_', '');
+
+        // Identifier can be sched_${scheduleId} or sched_${scheduleId}_${dayStr}
+        const withoutPrefix = notif.identifier.replace('sched_', '');
+        const parts = withoutPrefix.split('_');
+        const schedId = parts[0];
+        const notifDateStr = parts.length > 1 ? parts[1] : null;
 
         let shouldKeep = false;
         if (Array.isArray(medicines)) {
           for (const med of medicines) {
             if (!med.is_active) continue;
+
+            const isSchedMatch = med.schedules?.some((s: any) => s.id === schedId && s.is_active);
+            if (!isSchedMatch) continue;
+
+            // Check medicine end_date
             if (med.end_date) {
               const endDateStr = typeof med.end_date === 'string' ? med.end_date.split('T')[0] : med.end_date.toISOString().split('T')[0];
-              const endDateTime = new Date(endDateStr + 'T23:59:59');
-              if (now > endDateTime) continue; // Expired!
+              // If medicine course has ended, drop all notifications
+              if (todayStr > endDateStr) {
+                continue;
+              }
+              // If this is a legacy daily notification without date, cancel it so we can reschedule as DATE
+              if (!notifDateStr) {
+                continue;
+              }
+              // If this notification date is in the past or after end date, drop it
+              if (notifDateStr < todayStr || notifDateStr > endDateStr) {
+                continue;
+              }
             }
-            if (med.schedules?.some((s: any) => s.id === schedId && s.is_active)) {
-              shouldKeep = true;
-              break;
-            }
+
+            shouldKeep = true;
+            break;
           }
         }
 
         if (!shouldKeep) {
-          console.log(`[NOTIFS] Cancelling expired or inactive reminder: ${notif.identifier}`);
+          console.log(`[NOTIFS] Cancelling expired or invalid reminder: ${notif.identifier}`);
           await Notifications.cancelScheduledNotificationAsync(notif.identifier);
-          scheduledIds.delete(notif.identifier);
         }
       }
 
-      // 2. Auto-schedule reminders for active medicines if missing
+      // 2. Schedule reminders for all active, unexpired medicines
       if (Array.isArray(medicines)) {
         for (const med of medicines) {
           if (!med.is_active) continue;
           if (med.end_date) {
             const endDateStr = typeof med.end_date === 'string' ? med.end_date.split('T')[0] : med.end_date.toISOString().split('T')[0];
-            const endDateTime = new Date(endDateStr + 'T23:59:59');
-            if (now > endDateTime) continue; // Expired!
+            if (todayStr > endDateStr) continue; // Course over!
           }
 
           if (Array.isArray(med.schedules)) {
             for (const sched of med.schedules) {
               if (!sched.is_active) continue;
-              const identifier = `sched_${sched.id}`;
-              if (!scheduledIds.has(identifier)) {
-                await this.scheduleMedicineReminder(
-                  med.name,
-                  med.dosage,
-                  med.dosage_unit,
-                  sched.schedule_time,
-                  sched.id,
-                  med.end_date
-                );
-                scheduledIds.add(identifier);
-              }
+              await this.scheduleMedicineReminder(
+                med.name,
+                med.dosage,
+                med.dosage_unit,
+                sched.schedule_time,
+                sched.id,
+                med.end_date
+              );
             }
           }
         }
@@ -219,7 +271,12 @@ export const NotificationService = {
   async cancelReminder(scheduleId: string): Promise<void> {
     if (Platform.OS === 'web') return;
     try {
-      await Notifications.cancelScheduledNotificationAsync(`sched_${scheduleId}`);
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      for (const notif of scheduled) {
+        if (notif.identifier === `sched_${scheduleId}` || notif.identifier.startsWith(`sched_${scheduleId}_`)) {
+          await Notifications.cancelScheduledNotificationAsync(notif.identifier);
+        }
+      }
     } catch (e) {
       console.warn('Failed to cancel notification:', e);
     }

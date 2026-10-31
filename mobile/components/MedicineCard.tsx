@@ -44,24 +44,39 @@ const formatTime = (timeString: string | null | undefined): string => {
 
   const formattedSchedules = (medicine.schedules || []).map((s) => formatTime(s.schedule_time));
 
+  const isCompleted = React.useMemo(() => {
+    if (!medicine.end_date) return false;
+    const endDateStr = typeof medicine.end_date === 'string' ? medicine.end_date.split('T')[0] : '';
+    const todayStr = new Date().toISOString().split('T')[0];
+    return !!endDateStr && todayStr > endDateStr;
+  }, [medicine.end_date]);
+
+  const dateRangeStr = React.useMemo(() => {
+    if (!medicine.start_date) return null;
+    const startStr = typeof medicine.start_date === 'string' ? medicine.start_date.split('T')[0] : '';
+    const endStr = medicine.end_date ? (typeof medicine.end_date === 'string' ? medicine.end_date.split('T')[0] : '') : null;
+    if (!startStr) return null;
+    return endStr ? `${startStr} to ${endStr}` : `From ${startStr}`;
+  }, [medicine.start_date, medicine.end_date]);
+
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, isCompleted && styles.completedCard]}
       activeOpacity={onPress ? 0.7 : 1}
       onPress={onPress}
     >
       <View style={styles.header}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="medkit" size={22} color={Colors.primary} />
+        <View style={[styles.iconContainer, isCompleted && styles.completedIconContainer]}>
+          <Ionicons name="medkit" size={22} color={isCompleted ? Colors.textMuted : Colors.primary} />
         </View>
         <View style={styles.titleInfo}>
-          <Text style={styles.name}>{medicine.name}</Text>
+          <Text style={[styles.name, isCompleted && styles.completedName]}>{medicine.name}</Text>
           {medicine.generic_name ? (
             <Text style={styles.generic}>{medicine.generic_name}</Text>
           ) : null}
         </View>
-        <View style={styles.dosageBadge}>
-          <Text style={styles.dosageText}>
+        <View style={isCompleted ? styles.completedDosageBadge : styles.dosageBadge}>
+          <Text style={isCompleted ? styles.completedDosageText : styles.dosageText}>
             {medicine.dosage} {medicine.dosage_unit}
           </Text>
         </View>
@@ -71,6 +86,15 @@ const formatTime = (timeString: string | null | undefined): string => {
         <View style={styles.typeBadge}>
           <Text style={styles.typeText}>{medicine.medicine_type}</Text>
         </View>
+        {isCompleted ? (
+          <View style={styles.courseDoneBadge}>
+            <Ionicons name="checkmark-circle" size={14} color="#15803D" />
+            <Text style={styles.courseDoneText}>Course Completed</Text>
+          </View>
+        ) : null}
+        {dateRangeStr ? (
+          <Text style={styles.dateRangeText}>📅 {dateRangeStr}</Text>
+        ) : null}
         {medicine.instructions ? (
           <Text style={styles.instructions} numberOfLines={1}>
             💬 {medicine.instructions}
@@ -242,5 +266,46 @@ const styles = StyleSheet.create({
   deleteBtn: {},
   deleteText: {
     color: Colors.danger,
+  },
+  completedCard: {
+    opacity: 0.85,
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  completedIconContainer: {
+    backgroundColor: '#F1F5F9',
+  },
+  completedName: {
+    color: Colors.textSecondary,
+  },
+  completedDosageBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: BorderRadius.sm,
+  },
+  completedDosageText: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    fontWeight: '600',
+  },
+  courseDoneBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: BorderRadius.sm,
+  },
+  courseDoneText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  dateRangeText: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    marginLeft: 2,
   },
 });
